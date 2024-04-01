@@ -51,7 +51,7 @@ def generate_prompt(chat_content):
     date_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
     return f"请根据以下聊天记录提取会议的关键信息，目前时间是{date_time_str}, 并以JSON格式输出: \n\n{chat_content}\n\n" + """期望的输出格式如下：{
-  "summary": （根据聊天内容提取主题，言简意赅，需要包含人物、事件等信息）,
+  "summary": （根据聊天内容提取日程主题，需要包含【参与对象】、【做什么事】等，例如“和XXX一起做XXX”）,
   "start_time": （提取开始时间，格式为YYYY-MM-DD HH:MM, 如果时间没有具体到小时和分钟，则假定为当天的9:00）,
   "duration": （持续时长，单位为分钟，如果没有说明时间，则根据类别选择，会议默认为60分钟、吃饭默认2小时、提醒则默认为15分钟）,
   "attendees": （参会者，所有提到的名字都被列为参会者，不用包含自己，请认真甄别）,
