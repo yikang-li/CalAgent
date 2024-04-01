@@ -1,0 +1,8 @@
+.vscode/
+__pycache__/
+tmp/*
+data/*
+config_server.ini
+config.ini
+run.log
+itchat.pkl
