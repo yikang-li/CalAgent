@@ -1,0 +1,13 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:ics.py - http://git.io/lLljaA
+BEGIN:VEVENT
+ATTENDEE;CN=yikang_li@idgcapital.com:mailto:yikang_li@idgcapital.com
+ATTENDEE;CN=allen.li.thu@gmail.com:mailto:allen.li.thu@gmail.com
+DURATION:PT1H
+LOCATION:Zoom Meeting
+DTSTART:20240329T140000Z
+SUMMARY:项目进度讨论会
+UID:535f8636-fa68-472d-95ba-78cda328a103@535f.org
+END:VEVENT
+END:VCALENDAR
