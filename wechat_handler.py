@@ -8,6 +8,10 @@ from chat_analysis import analyze_chat
 from calendar_generator import generate_ics
 from email_service import send_email
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
 
 def bind_email(wechat_id, email):
     """

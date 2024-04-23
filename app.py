@@ -14,13 +14,16 @@ from email_service import send_email
 
 from openai import OpenAI
 
+# set logging level
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
 config_file_path = os.getenv('PA_CONFIG_PATH', './config.ini')
 config = configparser.ConfigParser()
 logging.info(f"Using config file: {config_file_path}")
 config.read(config_file_path, encoding='utf-8')
 
-# set logging level
-logging.basicConfig(level=logging.INFO)
 
 # OpenAI proxy settings
 if config["Connection"].get("http_port", None):
@@ -35,7 +38,7 @@ else:
 openai_client = OpenAI(api_key=config["OpenAI"]["api_key"], http_client=httpx_client)
 
 
-@itchat.msg_register([TEXT, MAP, CARD, NOTE, SHARING])
+@itchat.msg_register([TEXT])
 def text_reply(msg):
     logging.info(f"Text: {msg.user.NickName}: {msg.text}")
     if msg.text.startswith("@bind"):
@@ -58,10 +61,11 @@ def text_reply(msg):
     #     msg.user.send(f"Cannot recognize the command: {msg.text}. Please type @help for help.")
     # return "Received but ignored: " + msg.text
 
-@itchat.msg_register([PICTURE, RECORDING, ATTACHMENT, VIDEO])
+# @itchat.msg_register([PICTURE, RECORDING, ATTACHMENT, VIDEO])
+@itchat.msg_register([RECORDING])
 def download_files(msg):
     logging.info(f"File: {msg.user.NickName}: {msg.fileName}")
-    
+
     file_path = os.path.join('tmp', msg.fileName)
     msg.download(file_path)
     # 判断消息类型
@@ -102,5 +106,5 @@ if __name__ == "__main__":
     # export PA_CONFIG_PATH=./config_server.ini
 
     # 登录
-    itchat.auto_login(hotReload=True, enableCmdQR=2)
+    itchat.auto_login(hotReload=False, enableCmdQR=2)
     itchat.run(True)

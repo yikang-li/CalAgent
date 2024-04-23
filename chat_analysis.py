@@ -50,16 +50,15 @@ def generate_prompt(chat_content):
     now = datetime.now()
     date_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    return f"请根据以下聊天记录提取会议的关键信息，目前时间是{date_time_str}, 并以JSON格式输出: \n\n{chat_content}\n\n" + """期望的输出格式如下：{
-  "summary": （根据聊天内容提取日程主题，需要包含【参与对象】、【做什么事】等，例如“和XXX一起做XXX”）,
-  "start_time": （提取开始时间，格式为YYYY-MM-DD HH:MM, 如果时间没有具体到小时和分钟，则假定为当天的9:00）,
-  "duration": （持续时长，单位为分钟，如果没有说明时间，则根据类别选择，会议默认为60分钟、吃饭默认2小时、提醒则默认为15分钟）,
-  "attendees": （参会者，所有提到的名字都被列为参会者，不用包含自己，请认真甄别）,
+    return f"你作为日程创建助理，根据提供的聊天记录提取会议的关键信息用于日程创建，请注意当前收到信息的时间是 {date_time_str}, 以JSON格式输出会议信息，请不要脑补聊天记录中没有的信息。\n\n" + """期望的输出格式如下：{
+  "summary": （根据聊天内容提取日程/提醒的主题，需要包含【参与对象】、【做什么事】等，例如“和XXX一起做XXX”或者“XX小组讨论会”等， 如果不涉及则返回空）,
+  "start_time": （提取开始时间，格式为YYYY-MM-DD HH:MM; 如果时间没有具体到小时和分钟，则假定为当天的9:00; 如果收到信息的时间是凌晨0点到4点之间，且聊天中使用例如"明天/后天"这样的相对日期，则默认将时间提前一天）,
+  "duration": （持续时长，单位为分钟，如果没有说明时间，则根据类别选择，会议默认为60分钟、吃饭等娱乐活动默认2小时、提醒则默认为15分钟）,
+  "attendees": （参会者，所有提到的名字、邮箱都被列为参会者，不用包含自己）,
   "location": （参会地址或者所用会议工具，如Zoom、腾讯会议、微信语音、电话号码等，如果未提及，则输出''）,
-  "is_meeting": (根据信息判断是否可以涉及日程或者提醒，满足其一则回复True，否则False),
-}
-请输出：
-"""
+  "is_meeting": （根据聊天判断是否可以需要预定日程或者提醒，满足其一则返回True，否则返回False),
+}\n
+""" + f"聊天记录为: \n{chat_content}\n请输出："
 
 def parse_info(text):
     """
@@ -69,9 +68,9 @@ def parse_info(text):
     """
     info = json.loads(text)
     info["start_time"] = datetime.strptime(info["start_time"], "%Y-%m-%d %H:%M")
-    # 如果是凌晨4点之前，则在开始时间上提前一天
-    if datetime.now().hour < 4:
-        info["start_time"] = info["start_time"] - timedelta(days=1)
+    # # 如果是凌晨4点之前，则在开始时间上提前一天
+    # if datetime.now().hour < 4:
+    #     info["start_time"] = info["start_time"] - timedelta(days=1)
     # 如果开始时间晚于当前时间，则选择当前时间后1一小时的整点开始
     if info["start_time"] < datetime.now():
         info["start_time"] = datetime.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
