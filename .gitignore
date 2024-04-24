@@ -1,7 +1,8 @@
 .vscode/
 __pycache__/
+.DS_Store
 tmp/*
-data/*
+data/
 config_server.ini
 config.ini
 run.log

@@ -1,4 +1,4 @@
-from ics import Calendar, Event
+from icalendar import Calendar, Event
 from datetime import datetime, timedelta
 
 def generate_ics(event_info):
@@ -14,31 +14,35 @@ def generate_ics(event_info):
     :return: 生成的iCalendar (.ics) 文件内容
     """
     cal = Calendar()
-    event = Event()
+    cal.add('prodid', '-//YK Bot//YK Botverse//EN')
+    cal.add('version', '2.0')
+    cal.add('method', 'REQUEST')
 
-    event.name = event_info['summary']
-    event.begin = event_info['start_time']
-    event.duration = event_info['duration']
+    event = Event()
+    event.add('summary', event_info['summary'])
+    event.add('dtstart', event_info['start_time'])
+    event.add('dtend', event_info['start_time'] + event_info['duration'])
+    event.add('uid', f"{event_info['start_time'].strftime('%Y%m%dT%H%M%S')}@ykbot.com")
     if 'location' in event_info:
-        event.location = event_info['location']
+        event.add('location', event_info['location'])
 
     if 'attendees' in event_info and event_info['attendees']:
         for attendee in event_info['attendees']:
             if "@" in attendee:
-                event.attendees.add(attendee)
+                event.add('attendee', f"mailto:{attendee}")
 
-    cal.events.add(event)
+    cal.add_component(event)
 
     # 返回ICS文件的内容
-    return cal.serialize()
+    return cal.to_ical().decode('utf-8')
 
 # 示例使用
 if __name__ == "__main__":
     event_info = {
         'summary': '项目进度讨论会',
-        'start_time': datetime(2024, 3, 29, 14, 0),
+        'start_time': datetime.now() + timedelta(days=1),
         'duration': timedelta(minutes=60),
-        'attendees': ['allen.li.thu@gmail.com', 'yikang_li@idgcapital.com', "廖馨瑶"],
+        'attendees': ['yikang_li@idgcapital.com', '廖馨瑶'],
         'location': 'Zoom Meeting'
     }
     ics_content = generate_ics(event_info)

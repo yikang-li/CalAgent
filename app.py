@@ -2,6 +2,7 @@ import itchat
 from itchat.content import *
 from itchat import accept_friend
 import configparser
+import argparse
 import logging
 import os
 import httpx
@@ -14,28 +15,37 @@ from email_service import send_email
 
 from openai import OpenAI
 
+
 # set logging level
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
-
-config_file_path = os.getenv('PA_CONFIG_PATH', './config.ini')
 config = configparser.ConfigParser()
-logging.info(f"Using config file: {config_file_path}")
-config.read(config_file_path, encoding='utf-8')
+openai_client = None
 
 
-# OpenAI proxy settings
-if config["Connection"].get("http_port", None):
-    if config["Connection"].get("proxy_username", None):
-        http_proxy = f"http://{config['Connection']['proxy_username']}:{config['Connection']['proxy_password']}@{config['Connection']['proxy']}:{config['Connection']['http_port']}"
+def configuration():
+    parser = argparse.ArgumentParser(description='WeChat Meeting Assistant')
+    default_config_file_path = os.getenv('PA_CONFIG_PATH', './config.ini')
+    parser.add_argument('--config', default=default_config_file_path, help='path to the config file')
+    args = parser.parse_args()
+    config_file_path = args.config
+    logging.info(f"Using config file: {config_file_path}")
+    global config
+    config.read(config_file_path, encoding='utf-8')
+
+    # OpenAI proxy settings
+    if config["Connection"].get("http_port", None):
+        if config["Connection"].get("proxy_username", None):
+            http_proxy = f"http://{config['Connection']['proxy_username']}:{config['Connection']['proxy_password']}@{config['Connection']['proxy']}:{config['Connection']['http_port']}"
+        else:
+            http_proxy = f"http://{config['Connection']['proxy']}:{config['Connection']['http_port']}"
+        httpx_client = httpx.Client(proxies={"http://": http_proxy, "https://": http_proxy})
+        logging.info(f"Using proxy: {http_proxy}")
     else:
-        http_proxy = f"http://{config['Connection']['proxy']}:{config['Connection']['http_port']}"
-    httpx_client = httpx.Client(proxies={"http://": http_proxy, "https://": http_proxy})
-    logging.info(f"Using proxy: {http_proxy}")
-else:
-    httpx_client = None
-openai_client = OpenAI(api_key=config["OpenAI"]["api_key"], http_client=httpx_client)
+        httpx_client = None
+    global openai_client
+    openai_client = OpenAI(api_key=config["OpenAI"]["api_key"], http_client=httpx_client)
 
 
 @itchat.msg_register([TEXT])
@@ -104,7 +114,7 @@ def add_friend(msg):
 if __name__ == "__main__":
     # 默认通过环境变量来配置config.ini文件路径， 默认采用./config.ini
     # export PA_CONFIG_PATH=./config_server.ini
-
+    configuration()
     # 登录
-    itchat.auto_login(hotReload=False, enableCmdQR=2)
+    itchat.auto_login(hotReload=False, enableCmdQR=2, picDir='./tmp/')
     itchat.run(True)

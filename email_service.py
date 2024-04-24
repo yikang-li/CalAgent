@@ -41,7 +41,7 @@ def send_email(sender_email,
     :param ics_content: iCalendar (.ics) 文件的内容
     """
     # 创建MIMEMultipart对象
-    msg = MIMEMultipart()
+    msg = MIMEMultipart('mixed')
     msg['From'] = sender_email
     msg['To'] = recipient_email
     msg['Subject'] = subject
@@ -49,16 +49,17 @@ def send_email(sender_email,
     # 添加邮件正文
     msg.attach(MIMEText(body, 'plain'))
 
-    # 设置.ics文件作为附件
-    part = MIMEBase('text', 'calendar')
-    part.set_payload(ics_content.encode('utf-8'))
-    encoders.encode_base64(part)
-    part.add_header('Content-Disposition', "attachment; filename= event.ics")
-    
-    # 将附件添加到MIMEMultipart对象中
-    msg.attach(part)
+    # 添加直接可识别的日历事件
+    part_calendar = MIMEText(ics_content,'calendar; method=REQUEST')
+    msg.attach(part_calendar)
 
-    
+    # 设置.ics文件作为附件
+    part_attachment = MIMEBase('text', 'calendar', name="event.ics")
+    part_attachment.set_payload(ics_content.encode('utf-8'))
+    encoders.encode_base64(part_attachment)
+    part_attachment.add_header('Content-Disposition', 'attachment', filename="event.ics")
+    msg.attach(part_attachment)
+
 
     # 使用SMTP服务器发送邮件
     # 设置 socks 代理
@@ -88,14 +89,10 @@ if __name__ == "__main__":
     sender_password = config['Email']["sender_password"]
     recipient_email = "yikang_li@idgcapital.com"
     subject = "[测试邮件] 会议邀请"
-    body = ""
+    body = "测试邮件"
     temp = analyze_chat("我和廖馨瑶明天下午2点一起讨论日本行程的具体细节。")
     with open('data/meeting.ics', 'r', encoding="utf-8") as file:
         ics_content = file.read()
-    # ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\n..."  # 这里应是生成的ICS内容
-    send_email(sender_email, sender_password, recipient_email, subject, body, ics_content, proxy = ["127.0.0.1", 1080])
-    temp = analyze_chat("我和廖馨瑶明天下午2点一起讨论日本行程的具体细节。")
-    with open('data/meeting.ics', 'r', encoding="utf-8") as file:
-        ics_content = file.read()
+        print(ics_content)
     # ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\n..."  # 这里应是生成的ICS内容
     send_email(sender_email, sender_password, recipient_email, subject, body, ics_content, proxy = ["127.0.0.1", 1080])
