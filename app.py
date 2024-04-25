@@ -116,5 +116,5 @@ if __name__ == "__main__":
     # export PA_CONFIG_PATH=./config_server.ini
     configuration()
     # 登录
-    itchat.auto_login(hotReload=False, enableCmdQR=2, picDir='./tmp/')
+    itchat.auto_login(hotReload=False, enableCmdQR=2, picDir='./tmp/QRCode.png')
     itchat.run(True)

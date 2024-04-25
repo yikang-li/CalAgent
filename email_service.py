@@ -87,6 +87,14 @@ if __name__ == "__main__":
 
     sender_email = config["Email"]["sender_email"]
     sender_password = config['Email']["sender_password"]
+    # Gmail proxy settings
+    if config["Connection"].get("socks_port", None):
+        socks_proxy = [config["Connection"]["proxy"], 
+                    int(config["Connection"]["socks_port"]), 
+                    config["Connection"].get("proxy_username", None), 
+                    config["Connection"].get("proxy_password", None)]
+    else:
+        socks_proxy = None
     recipient_email = "yikang_li@idgcapital.com"
     subject = "[测试邮件] 会议邀请"
     body = "测试邮件"
@@ -95,4 +103,4 @@ if __name__ == "__main__":
         ics_content = file.read()
         print(ics_content)
     # ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\n..."  # 这里应是生成的ICS内容
-    send_email(sender_email, sender_password, recipient_email, subject, body, ics_content, proxy = ["127.0.0.1", 1080])
+    send_email(sender_email, sender_password, recipient_email, subject, body, ics_content, proxy = socks_proxy)
