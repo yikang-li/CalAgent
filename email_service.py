@@ -9,9 +9,16 @@ import socket
 import os
 import configparser
 from chat_analysis import analyze_chat
+import logging
 
 @contextmanager
 def use_proxy(proxy_type, proxy_addr, proxy_port, proxy_username=None, proxy_password=None):
+    # import pdb
+    # pdb.set_trace()
+    if proxy_addr is None or proxy_port is None:
+        yield
+        return
+    logging.info(f'Using SOCKS proxy: {proxy_addr}:{proxy_port}')
     original_socket = socket.socket
     try:
         socks.setdefaultproxy(proxy_type, proxy_addr, proxy_port, username=proxy_username, password=proxy_password)
@@ -29,7 +36,7 @@ def send_email(sender_email,
                 ics_content, 
                 smtp_server='smtp.gmail.com',
                 smtp_port=587, 
-                proxy=None):
+                proxy=(None, None)):
     """
     使用SMTP协议发送电子邮件，包含一个.ics日历文件作为附件。
 
@@ -66,16 +73,22 @@ def send_email(sender_email,
     try:
         # 设置 socks 代理
         with use_proxy(socks.PROXY_TYPE_SOCKS5, *proxy):
+            # import pdb
+            # pdb.set_trace()
+            logging.info(f'Connecting SMTP: {smtp_server}:{smtp_port}')
             server = smtplib.SMTP(smtp_server, smtp_port)  # 替换为你的SMTP服务器地址和端口
+            # server.set_debuglevel(1)
             server.starttls()  # 启用TLS加密
+            logging.info(f'Login SMTP: {sender_email}')
             server.login(sender_email, sender_password)
             text = msg.as_string()
+            logging.info(f'Sending email...')
             server.sendmail(sender_email, recipient_email, text)
             server.quit()
-            print("邮件发送成功！")
+            logging.info("Successfully sending email.")
         return True
     except Exception as e:
-        print(f"邮件发送失败：{e}")
+        print(f"Failed to send email：{e}")
         return False
 
 # 示例使用
@@ -94,11 +107,10 @@ if __name__ == "__main__":
                     config["Connection"].get("proxy_username", None), 
                     config["Connection"].get("proxy_password", None)]
     else:
-        socks_proxy = None
+        socks_proxy = (None, None)
     recipient_email = "yikang_li@idgcapital.com"
-    subject = "[测试邮件] 会议邀请"
-    body = "测试邮件"
-    temp = analyze_chat("我和廖馨瑶明天下午2点一起讨论日本行程的具体细节。")
+    subject = "和廖馨瑶讨论项目"
+    body = "和廖馨瑶讨论项目"
     with open('data/meeting.ics', 'r', encoding="utf-8") as file:
         ics_content = file.read()
         print(ics_content)

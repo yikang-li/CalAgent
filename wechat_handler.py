@@ -83,6 +83,10 @@ def process_meeting_info(
         meeting_info["attendees"] = [to_email]
     logging.info(meeting_info)
     ics_content = generate_ics(meeting_info)
+    # 将ICS内容写入文件
+    with open('tmp/meeting.ics', 'w', encoding="utf-8") as file:
+        file.write(ics_content)
+    logging.info(ics_content)
 
     # Gmail proxy settings
     if config["Connection"].get("socks_port", None):
@@ -92,7 +96,7 @@ def process_meeting_info(
                     config["Connection"].get("proxy_password", None)]
         logging.info(f"Using proxy: {socks_proxy}")
     else:
-        socks_proxy = None
+        socks_proxy = (None, None)
 
     # 发送邮件
     result = send_email(config["Email"]["sender_email"], 
@@ -120,8 +124,8 @@ if __name__ == "__main__":
     logging.info(f"Using config file: {config_file_path}")
     config.read(config_file_path, encoding='utf-8')
 
-    print(f"Bind Email: {bind_email(wechat_id, 'yikang_li@idgcapital.com')}")
-    print(f"Get Email: {get_email(wechat_id)}")
+    # print(f"Bind Email: {bind_email(wechat_id, 'yikang_li@idgcapital.com')}")
+    # print(f"Get Email: {get_email(wechat_id)}")
     response = "我和廖馨瑶明天下午2点一起讨论日本行程的具体细节。"
     print(f"Process meeting info ({response}):\n")
     print(process_meeting_info(wechat_id, response, None, config))

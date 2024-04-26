@@ -1,5 +1,6 @@
 from icalendar import Calendar, Event
 from datetime import datetime, timedelta
+import pytz
 
 def generate_ics(event_info):
     """
@@ -23,8 +24,10 @@ def generate_ics(event_info):
     event.add('dtstart', event_info['start_time'])
     event.add('dtend', event_info['start_time'] + event_info['duration'])
     event.add('uid', f"{event_info['start_time'].strftime('%Y%m%dT%H%M%S')}@ykbot.com")
-    if 'location' in event_info:
+    if event_info.get('location', ""):
         event.add('location', event_info['location'])
+    else:
+        event.add('location', 'Pending')
 
     if 'attendees' in event_info and event_info['attendees']:
         for attendee in event_info['attendees']:
@@ -38,9 +41,10 @@ def generate_ics(event_info):
 
 # 示例使用
 if __name__ == "__main__":
+    tz_utc_8 = pytz.timezone('Asia/Shanghai')
     event_info = {
         'summary': '项目进度讨论会',
-        'start_time': datetime.now() + timedelta(days=1),
+        'start_time': (datetime.now() + timedelta(days=1)).replace(tzinfo=tz_utc_8),
         'duration': timedelta(minutes=60),
         'attendees': ['yikang_li@idgcapital.com', '廖馨瑶'],
         'location': 'Zoom Meeting'
