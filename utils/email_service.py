@@ -8,7 +8,6 @@ import socks
 import socket
 import os
 import configparser
-from chat_analysis import analyze_chat
 import logging
 
 @contextmanager
@@ -36,7 +35,7 @@ def send_email(sender_email,
                 ics_content, 
                 smtp_server='smtp.gmail.com',
                 smtp_port=587, 
-                proxy=(None, None)):
+                connection_config=None):
     """
     使用SMTP协议发送电子邮件，包含一个.ics日历文件作为附件。
 
@@ -72,7 +71,16 @@ def send_email(sender_email,
     # 设置 socks 代理
     try:
         # 设置 socks 代理
-        with use_proxy(socks.PROXY_TYPE_SOCKS5, *proxy):
+        # Gmail proxy settings
+        if connection_config and connection_config.get("socks_port", None):
+            socks_proxy = [connection_config["proxy"], 
+                        int(connection_config["socks_port"]), 
+                        connection_config.get("proxy_username", None), 
+                        connection_config.get("proxy_password", None)]
+            logging.info(f"Using proxy: {socks_proxy}")
+        else:
+            socks_proxy = (None, None)
+        with use_proxy(socks.PROXY_TYPE_SOCKS5, *socks_proxy):
             # import pdb
             # pdb.set_trace()
             logging.info(f'Connecting SMTP: {smtp_server}:{smtp_port}')
@@ -100,14 +108,6 @@ if __name__ == "__main__":
 
     sender_email = config["Email"]["sender_email"]
     sender_password = config['Email']["sender_password"]
-    # Gmail proxy settings
-    if config["Connection"].get("socks_port", None):
-        socks_proxy = [config["Connection"]["proxy"], 
-                    int(config["Connection"]["socks_port"]), 
-                    config["Connection"].get("proxy_username", None), 
-                    config["Connection"].get("proxy_password", None)]
-    else:
-        socks_proxy = (None, None)
     recipient_email = "yikang_li@idgcapital.com"
     subject = "和廖馨瑶讨论项目"
     body = "和廖馨瑶讨论项目"
@@ -115,4 +115,4 @@ if __name__ == "__main__":
         ics_content = file.read()
         print(ics_content)
     # ics_content = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\n..."  # 这里应是生成的ICS内容
-    send_email(sender_email, sender_password, recipient_email, subject, body, ics_content, proxy = socks_proxy)
+    send_email(sender_email, sender_password, recipient_email, subject, body, ics_content, connection_config=config["Connection"])
