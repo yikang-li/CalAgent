@@ -1,6 +1,6 @@
-import itchat
-from itchat.content import *
-from itchat import accept_friend
+from lib import itchat
+from lib.itchat.content import *
+from lib.itchat import accept_friend
 import configparser
 import argparse
 import logging
