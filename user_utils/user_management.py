@@ -8,7 +8,7 @@ class UserManager:
                  owner_id=None, 
                  get_id_func=None):
         self.db_file = db_file
-        # 实际管理者用户ID
+        # 实际管理者用户名
         self.owner_id = owner_id
         # 用于user_name转换为实际的user_id
         self.get_id = get_id_func
@@ -36,6 +36,7 @@ class UserManager:
                     logging.info("User table already exists.")
         except Error as e:
             logging.error(e)
+        self.set_user_field(self.owner_id, "user_type", "owner")
     
     def connect(self):
         """ 创建一个数据库连接到SQLite数据库 """

@@ -53,10 +53,10 @@ def configuration():
     global chat_manager
     global user_manager
     user_manager = UserManager(config['UserManagement']['user_db_path'], 
-                               owner_id=config['Assistant']['owner'])
+                               owner_id=config['UserManagement']['owner'])
     chat_manager = ChatManager(config, user_manager, 
                                chat_lifespan=int(config['Assistant']['chat_lifespan']), 
-                               chat_callback=lambda x: send_message(config['Assistant']['owner'], x))
+                               chat_callback=lambda x: send_message(config['UserManagement']['owner'], x))
 
 @itchat.msg_register([TEXT])
 def text_reply(msg):

@@ -2,6 +2,7 @@ from user_utils.user_management import UserManager
 import logging
 import os
 import configparser
+import time
 
 from chat_utils.chat_analysis import analyze_meeting_chat, analyze_chat
 from utils.calendar_generator import generate_ics
@@ -56,6 +57,7 @@ def text_chat_handler(msg,
             return "我正在忙，稍晚回复你"
     elif user_manager.get_user_field(user_id, "user_type") == "owner" or user_manager.get_user_field(user_id, "user_type") == "star":
         if not user_chat.user_initiated:
+            time.sleep(config['Assistant'].getint('delay_time', 0))
             return process_general_chat(msg, user_chat, config)
         else:
             return user_initiated_chat_recorder(msg, user_chat, role = "user")
