@@ -5,7 +5,7 @@ import configparser
 import argparse
 import logging
 import os
-from chat_utils.chat_handler import text_chat_handler, voice_chat_handler, user_initiated_chat_recorder
+from chat_utils.chat_handler import text_chat_handler, asr_func, user_initiated_chat_recorder
 from chat_utils.chat_manager import ChatManager
 from user_utils.user_management import UserManager
 
@@ -62,13 +62,15 @@ def configuration():
 def text_reply(msg):
     logging.info(f"Text: {msg.user.NickName}: {msg.text}")
     if msg['FromUserName'] == get_id(None) and (user_manager.get_user_field(msg.user.NickName, "user_type") == "owner" or user_manager.get_user_field(msg.user.NickName, "user_type") == "star"):
-        # 如果手动发出的信息，不用进行处理，仅仅用于记录
+        # 如果主动发出的信息，不用进行处理，仅仅用于记录
         # 该功能仅对标星用户有效
         logging.info(f"主动发送信息给 [{msg.user.NickName}]: {msg.text}")
         user_initiated_chat_recorder(msg.text, chat_manager[msg.user.NickName])
         return
     return text_chat_handler(msg.text, user_manager, msg.user.NickName, config, 
-                             user_chat = chat_manager[msg.user.NickName])
+                             user_chat = chat_manager[msg.user.NickName], 
+                             reply_func=lambda x: itchat.send(x, toUserName=msg['FromUserName']), 
+                             recording=False)
 
 
 # @itchat.msg_register([PICTURE, RECORDING, ATTACHMENT, VIDEO])
@@ -85,9 +87,19 @@ def download_files(msg):
 
     # 如果是语音消息，进行ASR处理
     if msg.type == RECORDING:
-        result = voice_chat_handler(file_path, user_manager, msg.user.NickName, config)
+        response = asr_func(file_path, config)
+        logging.info(f"Voice Message[{msg.user.NickName}]: {response}")
         os.remove(file_path)
-        return result
+        if msg['FromUserName'] == get_id(None) and (user_manager.get_user_field(msg.user.NickName, "user_type") == "owner" or user_manager.get_user_field(msg.user.NickName, "user_type") == "star"):
+            # 如果主动发出的信息，不用进行处理，仅仅用于记录
+            # 该功能仅对标星用户有效
+            user_initiated_chat_recorder("[语音识别结果]" + response, chat_manager[msg.user.NickName])
+        else:
+            result = text_chat_handler(response, user_manager, msg.user.NickName, config, 
+                                       user_chat = chat_manager[msg.user.NickName], 
+                                       reply_func=lambda x: itchat.send(x, toUserName=msg['FromUserName']), 
+                                       recording=True)
+            return result
     else:
         # 对于非语音消息，返回原处理方式
         return '@%s@%s' % (typeSymbol, msg.fileName)

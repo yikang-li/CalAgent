@@ -2,15 +2,17 @@ import time
 from datetime import datetime
 import threading
 import logging
+from queue import Queue, Empty
 import os
 import configparser
 from chat_utils.chat_analysis import analyze_conversation
+from chat_utils.chat_handler import analyze_chat
 from models import openai_client
 
 # 定义 Chat 类来处理单个聊天的逻辑
 class Chat:
     def __init__(self, user_id, 
-                 max_conv_history:int = 10, 
+                 max_conv_history:int = 20, 
                  assistant_description = "个人助理",
                  chat_description = None,
                  lifespan:int=1800):
@@ -22,7 +24,15 @@ class Chat:
         self.max_conversation_history = max_conv_history
         self.system_message = {"role": "system", 
                           "content": f"{assistant_description}\n{chat_description}"}
+        # Store the message to process
+        self.message_queue = Queue()
+        self.lock = threading.Lock()
+        # Define the status of Chat
+        # 0: Specific Function Mode
+        # 1: Chat Mode
+        self.status = 0
         self.user_initiated = False
+        self.on_hold = False
 
     def is_active(self):
         # 更新聊天的活跃状态
@@ -31,17 +41,50 @@ class Chat:
         return not self.expired
 
     def add_message(self, message, user_initiated=False):
-        if not self.expired:
-            self.chat_history.append(message)
-            self.start_time = time.time()
-            logging.info(f"Message added to {self.user_id}: {message}")
-        else:
-            logging.info("Attempted to add message to expired chat.")
-        if user_initiated:
-            self.user_initiated = True
+        with self.lock:
+            if not self.expired:
+                self.chat_history.append(message)
+                self.start_time = time.time()
+                logging.info(f"Message added to {self.user_id}: {message}")
+            else:
+                logging.info("Attempted to add message to expired chat.")
+            if user_initiated:
+                self.user_initiated = True
+        # when some conversation history added, switch to chat mode
+        self.status = 1
+
+    def process_message(self, message, process_handler, reply_func):
+        self.message_queue.put([message, process_handler, reply_func])
+
+    def _process_message(self):
+        messages = []
+        process_handler = None
+        reply_func = None
+        while True:
+            try:
+                message, process_handler, reply_func = self.message_queue.get_nowait()
+                messages.append(message)
+            except Empty:
+                break
+        if len(messages) > 0:
+            messages = {"role": "user", "content": "\n\n".join(messages)}
+            self.add_message(messages)
+            chat_history = self.get_history()
+            logging.info(f"Entire chat history:\n{chat_history}")
+            response = process_handler(chat_history)
+            self.add_message({"role": "assistant", "content": response})
+            logging.info(f"Response generated: {response}")
+            reply_func(response)
 
     def get_history(self):
-        return [self.system_message,  *self.chat_history[:self.max_conversation_history]]
+        with self.lock:
+            return [self.system_message,  *self.chat_history[:self.max_conversation_history]]
+    
+    def chat_on_hold(self):
+        self.on_hold = True
+
+    def is_on_hold(self):
+        return self.on_hold
 
 # 定义 ChatManager 类来管理所有活跃的聊天
 class ChatManager:
@@ -82,7 +125,14 @@ class ChatManager:
     def _expire_chat(self, user_id):
         # 管理聊天的生命周期
         while self.active_chats[user_id].is_active():
-            time.sleep(10)
+            time.sleep(3)
+            # 一段时间进行一次消息处理
+            self.active_chats[user_id]._process_message()
+
+        if len(self.active_chats[user_id].get_history()) <= 1:
+            del self.active_chats[user_id]
+            logging.info(f"Chat expired and deleted for user: {user_id}")
+            return
         result = analyze_conversation(self.active_chats[user_id].get_history(), 
                                               self.user_manager.get_user_field(user_id, "tags"),
                                               openai_client=openai_client(self.config), 
@@ -135,13 +185,17 @@ def test():
     chat.add_message({'role': 'assistant', 'content': '你好，最近还不错，谢谢关心。你最近过得如何呢？有什么新鲜事儿吗？'})
     chat.add_message({'role': 'user', 'content': '你可以借我些钱吗？'})
     chat.add_message({'role': 'assistant', 'content': '抱歉，我作为一个AI分身是无法提供金钱支持的。不过，如果有什么其他方面我可以帮忙的，尽管开口。'})
+    message_handler = lambda x:analyze_chat(x, openai_client=openai_client(config), chat_model=config["OpenAI"]["chat_model"], response_format="text")
+    chat.process_message('我现在生活真的很难，可以借我些钱吗？', message_handler, lambda x: print('Response: ' + x))
+    chat.process_message('真的，我现在需要钱，你知道我的生活现在是什么状况吗？', message_handler, lambda x: print('Response: ' + x))
+    chat.process_message('你明天在家吗，我想当面跟你说？', message_handler, lambda x: print('Response: ' + x))
 
     # 输出当前聊天历史
     print("Current chat history:", chat.get_history())
 
     # 模拟等待，查看聊天是否过期（这里使用较短的等待时间来演示）
     print("Waiting for chat to expire...")
-    time.sleep(5)  # 这里时间应与 Chat 类中定义的 lifespan 相关，这里假设为短时间演示
+    time.sleep(15)  # 这里时间应与 Chat 类中定义的 lifespan 相关，这里假设为短时间演示
 
     # 检查聊天是否还活跃
     if not chat.is_active():
